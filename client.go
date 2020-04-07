@@ -330,13 +330,16 @@ func (c *Client) heartbeat(ctx context.Context, l *Lock) {
 	c.log.Println("heartbeat started", l.name)
 	defer c.log.Println("heartbeat stopped", l.name)
 	for {
-		if err := ctx.Err(); err != nil {
+		select {
+		case <-ctx.Done():
+			c.log.Println("Cancel hearbeat")
 			return
-		} else if err := c.SendHeartbeat(ctx, l); err != nil {
-			defer c.log.Println("heartbeat missed", err)
-			return
+		case <-time.After(10 * time.Second):
+			if err := c.SendHeartbeat(ctx, l); err != nil {
+				defer c.log.Println("heartbeat missed", err)
+				return
+			}
 		}
-		time.Sleep(c.heartbeatFrequency)
 	}
 }
 
